@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary">#FF6750A4</color>
+    <color name="primary_dark">#FF4A3880</color>
+    <color name="secondary">#FF625B71</color>
+    <color name="secondary_dark">#FF4A4458</color>
+    <color name="background">#FFFEFBFF</color>
+    <color name="surface">#FFFEFBFF</color>
+    <color name="error">#FFB3261E</color>
+    <color name="on_primary">#FFFFFFFF</color>
+    <color name="on_secondary">#FFFFFFFF</color>
+    <color name="on_background">#FF1C1B1F</color>
+    <color name="on_surface">#FF1C1B1F</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="black">#FF000000</color>
+
+    <!-- Type colors -->
+    <color name="type_birthday">#FFEF5350</color>
+    <color name="type_anniversary">#FFFF7043</color>
+    <color name="type_festival">#FF66BB6A</color>
+    <color name="type_custom">#FF42A5F5</color>
+    <color name="lunar_tag">#FFAB47BC</color>
+</resources>
