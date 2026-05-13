@@ -20,4 +20,7 @@
     <color name="type_festival">#FF66BB6A</color>
     <color name="type_custom">#FF42A5F5</color>
     <color name="lunar_tag">#FFAB47BC</color>
+    <color name="avatar_background">#FFE8DEF8</color>
+    <color name="avatar_text_color">#FF4F378B</color>
+    <color name="divider_color">#1F000000</color>
 </resources>

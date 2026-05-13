@@ -1,10 +1,8 @@
 package com.anniversary.app.ui.main
 
 import android.Manifest
-import android.app.TimePickerDialog
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.view.Menu
@@ -13,33 +11,22 @@ import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.widget.SearchView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.anniversary.app.AnniversaryApplication
 import com.anniversary.app.R
 import com.anniversary.app.data.entity.Anniversary
 import com.anniversary.app.data.entity.AnniversaryType
 import com.anniversary.app.databinding.ActivityMainBinding
-import com.anniversary.app.notification.ReminderScheduler
-import com.anniversary.app.notification.ReminderSettings
 import com.anniversary.app.ui.adapter.AnniversaryAdapter
 import com.anniversary.app.ui.add.AddEditActivity
 import com.anniversary.app.ui.detail.DetailActivity
+import com.anniversary.app.ui.login.AuthManager
 import com.anniversary.app.ui.widget.AnniversaryWidgetProvider
-import com.anniversary.app.util.DataBackupUtils
-import com.anniversary.app.util.DateUtils
 import com.google.android.material.tabs.TabLayout
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
 
@@ -49,12 +36,18 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val REQUEST_POST_NOTIFICATIONS = 1001
-        private const val REQUEST_EXPORT = 2001
-        private const val REQUEST_IMPORT = 2002
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Redirect to login if not authenticated
+        if (!AuthManager.isLoggedIn(this)) {
+            startActivity(Intent(this, com.anniversary.app.ui.login.LoginActivity::class.java))
+            finish()
+            return
+        }
+
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -126,7 +119,7 @@ class MainActivity : AppCompatActivity() {
         viewModel.isSelectionMode.observe(this) { isSelection ->
             adapter.isSelectionMode = isSelection
             if (isSelection) {
-                binding.toolbar.setTitle(R.string.select_all)
+                binding.toolbar.title = "已选择 0 项"
                 binding.toolbar.setNavigationIcon(R.drawable.ic_close)
                 binding.toolbar.setNavigationOnClickListener { viewModel.exitSelectionMode() }
                 binding.fabAdd.hide()
@@ -171,17 +164,15 @@ class MainActivity : AppCompatActivity() {
         // Show/hide items based on selection mode
         val isSelection = viewModel.isSelectionMode.value ?: false
         menu.findItem(R.id.action_search).isVisible = !isSelection
+        menu.findItem(R.id.action_select_all).isVisible = isSelection
+        menu.findItem(R.id.action_delete_selected).isVisible = isSelection
         menu.findItem(R.id.action_select).isVisible = isSelection
-
-        // Update dark/light mode label based on current mode
-        val isDarkMode = AppCompatDelegate.getDefaultNightMode() == AppCompatDelegate.MODE_NIGHT_YES
-        menu.findItem(R.id.action_dark_mode).title =
-            if (isDarkMode) getString(R.string.light_mode) else getString(R.string.dark_mode)
+        menu.findItem(R.id.action_profile).isVisible = !isSelection
 
         if (isSelection) {
-            menu.findItem(R.id.action_select).title = "删除选中"
+            menu.findItem(R.id.action_select).title = "取消选择"
             menu.findItem(R.id.action_select).setOnMenuItemClickListener {
-                showDeleteConfirmDialog()
+                viewModel.exitSelectionMode()
                 true
             }
         }
@@ -191,20 +182,17 @@ class MainActivity : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
-            R.id.action_dark_mode -> {
-                toggleDarkMode()
+            R.id.action_profile -> {
+                startActivity(Intent(this, com.anniversary.app.ui.profile.ProfileActivity::class.java))
                 true
             }
-            R.id.action_reminder_time -> {
-                showReminderTimePicker()
+            R.id.action_select_all -> {
+                val allIds = viewModel.anniversaries.value?.map { it.id } ?: emptyList()
+                viewModel.selectAll(allIds)
                 true
             }
-            R.id.action_export -> {
-                exportData()
-                true
-            }
-            R.id.action_import -> {
-                confirmAndImport()
+            R.id.action_delete_selected -> {
+                showDeleteConfirmDialog()
                 true
             }
             else -> super.onOptionsItemSelected(item)
@@ -225,231 +213,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
-    private fun toggleDarkMode() {
-        val currentMode = AppCompatDelegate.getDefaultNightMode()
-        val newMode = if (currentMode == AppCompatDelegate.MODE_NIGHT_YES) {
-            AppCompatDelegate.MODE_NIGHT_NO
-        } else {
-            AppCompatDelegate.MODE_NIGHT_YES
-        }
-        // Persist the mode preference
-        getSharedPreferences("app_settings", MODE_PRIVATE).edit()
-            .putInt("night_mode", newMode)
-            .apply()
-        AppCompatDelegate.setDefaultNightMode(newMode)
-    }
-
-    private fun showReminderTimePicker() {
-        val currentHour = ReminderSettings.getReminderHour(this)
-        val currentMinute = ReminderSettings.getReminderMinute(this)
-
-        val dialog = AlertDialog.Builder(this)
-            .setTitle(R.string.reminder_time)
-            .setMessage(getString(R.string.reminder_time_summary) + ReminderSettings.getReminderTimeDisplay(this))
-            .setPositiveButton(R.string.confirm, null)
-            .setNegativeButton(R.string.cancel, null)
-            .create()
-
-        val timePicker = android.widget.TimePicker(this).apply {
-            setIs24HourView(true)
-            hour = currentHour
-            minute = currentMinute
-        }
-
-        dialog.setView(timePicker)
-        dialog.show()
-
-        // Override the positive button to get the selected time
-        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-            val hour = timePicker.hour
-            val minute = timePicker.minute
-            ReminderSettings.setReminderTime(this, hour, minute)
-            rescheduleAllReminders()
-            Toast.makeText(
-                this,
-                getString(R.string.reminder_time_summary) + ReminderSettings.getReminderTimeDisplay(this),
-                Toast.LENGTH_SHORT
-            ).show()
-            dialog.dismiss()
-        }
-    }
-
-    private fun rescheduleAllReminders() {
-        val app = application as AnniversaryApplication
-        lifecycleScope.launch(Dispatchers.IO) {
-            val anniversaries = app.database.anniversaryDao().getAnniversariesWithReminder()
-            for (anniversary in anniversaries) {
-                if (anniversary.reminderDays > 0) {
-                    // Cancel old reminder and reschedule with new time
-                    ReminderScheduler.cancelReminder(
-                        this@MainActivity,
-                        anniversary.name,
-                        anniversary.date
-                    )
-                    // Use next occurrence for yearly repeating events
-                    val reminderDate = if (anniversary.isRepeatYearly) {
-                        if (anniversary.isLunar) {
-                            com.anniversary.app.util.DateUtils.getNextLunarOccurrence(
-                                anniversary.lunarMonth,
-                                anniversary.lunarDay,
-                                anniversary.lunarIsLeapMonth
-                            )
-                        } else {
-                            com.anniversary.app.util.DateUtils.getNextOccurrence(anniversary.date)
-                        }
-                    } else {
-                        anniversary.date
-                    }
-                    ReminderScheduler.scheduleReminder(
-                        this@MainActivity,
-                        anniversary.name,
-                        reminderDate,
-                        anniversary.reminderDays
-                    )
-                }
-            }
-        }
-    }
-
-    // ==================== Data Export / Import ====================
-
-    private fun exportData() {
-        val app = application as AnniversaryApplication
-        lifecycleScope.launch {
-            val anniversaries = withContext(Dispatchers.IO) {
-                app.database.anniversaryDao().getAllAnniversariesStatic()
-            }
-            if (anniversaries.isEmpty()) {
-                Toast.makeText(this@MainActivity, R.string.export_empty, Toast.LENGTH_SHORT).show()
-                return@launch
-            }
-            // Use SAF to let user pick save location
-            val dateFormat = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault())
-            val fileName = "anniversary_backup_${dateFormat.format(Date())}.json"
-            val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
-                type = "application/json"
-                addCategory(Intent.CATEGORY_OPENABLE)
-                putExtra(Intent.EXTRA_TITLE, fileName)
-            }
-            startActivityForResult(intent, REQUEST_EXPORT)
-        }
-    }
-
-    private fun confirmAndImport() {
-        AlertDialog.Builder(this)
-            .setTitle(R.string.import_data)
-            .setMessage(R.string.import_confirm_message)
-            .setPositiveButton(R.string.confirm) { _, _ ->
-                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                    type = "application/json"
-                    addCategory(Intent.CATEGORY_OPENABLE)
-                }
-                startActivityForResult(intent, REQUEST_IMPORT)
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
-    }
-
-    @Deprecated("Use Activity Result API in future")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (resultCode != RESULT_OK || data == null) return
-
-        when (requestCode) {
-            REQUEST_EXPORT -> {
-                data.data?.let { uri ->
-                    performExport(uri)
-                }
-            }
-            REQUEST_IMPORT -> {
-                data.data?.let { uri ->
-                    performImport(uri)
-                }
-            }
-        }
-    }
-
-    private fun performExport(uri: Uri) {
-        val app = application as AnniversaryApplication
-        lifecycleScope.launch {
-            try {
-                val anniversaries = withContext(Dispatchers.IO) {
-                    app.database.anniversaryDao().getAllAnniversariesStatic()
-                }
-                val json = DataBackupUtils.toJson(anniversaries)
-
-                withContext(Dispatchers.IO) {
-                    contentResolver.openOutputStream(uri)?.use { os ->
-                        os.write(json.toByteArray(Charsets.UTF_8))
-                    }
-                }
-
-                Toast.makeText(
-                    this@MainActivity,
-                    getString(R.string.export_success, anniversaries.size),
-                    Toast.LENGTH_SHORT
-                ).show()
-            } catch (e: Exception) {
-                Toast.makeText(this@MainActivity, R.string.export_failed, Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    private fun performImport(uri: Uri) {
-        val app = application as AnniversaryApplication
-        lifecycleScope.launch {
-            try {
-                val json = withContext(Dispatchers.IO) {
-                    contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
-                } ?: throw IllegalArgumentException("Cannot read file")
-
-                val importedList = DataBackupUtils.fromJson(json)
-                    ?: throw IllegalArgumentException("Invalid format")
-
-                // Insert all (id=0 so Room auto-generates new IDs to avoid conflicts)
-                withContext(Dispatchers.IO) {
-                    for (ann in importedList) {
-                        val newAnn = ann.copy(id = 0) // Let Room auto-generate ID
-                        val insertedId = app.database.anniversaryDao().insert(newAnn)
-                        // Schedule reminder if needed
-                        if (newAnn.reminderDays > 0) {
-                            val reminderDate = if (newAnn.isRepeatYearly) {
-                                if (newAnn.isLunar) {
-                                    DateUtils.getNextLunarOccurrence(
-                                        newAnn.lunarMonth, newAnn.lunarDay, newAnn.lunarIsLeapMonth
-                                    )
-                                } else {
-                                    DateUtils.getNextOccurrence(newAnn.date)
-                                }
-                            } else {
-                                newAnn.date
-                            }
-                            ReminderScheduler.scheduleReminder(
-                                this@MainActivity,
-                                newAnn.name,
-                                reminderDate,
-                                newAnn.reminderDays
-                            )
-                        }
-                    }
-                }
-
-                // Refresh widget
-                AnniversaryWidgetProvider.notifyDataChanged(this@MainActivity)
-
-                Toast.makeText(
-                    this@MainActivity,
-                    getString(R.string.import_success, importedList.size),
-                    Toast.LENGTH_SHORT
-                ).show()
-            } catch (e: Exception) {
-                Toast.makeText(this@MainActivity, R.string.import_failed, Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    // ==================== End Data Export / Import ====================
 
     private fun showDeleteConfirmDialog() {
         val count = viewModel.selectedIds.value?.size ?: 0
