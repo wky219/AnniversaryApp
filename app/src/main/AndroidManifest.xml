@@ -53,7 +53,7 @@
         <!-- Widget provider -->
         <receiver
             android:name=".ui.widget.AnniversaryWidgetProvider"
-            android:exported="false">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -64,6 +64,7 @@
 
         <service
             android:name=".ui.widget.WidgetRemoteViewsService"
+            android:exported="true"
             android:permission="android.permission.BIND_REMOTEVIEWS" />
 
     </application>

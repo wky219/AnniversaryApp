@@ -5,10 +5,11 @@ import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.util.Log
 import android.widget.RemoteViews
 import com.anniversary.app.R
 import android.app.PendingIntent
-import com.anniversary.app.ui.main.MainActivity
+import com.anniversary.app.ui.detail.DetailActivity
 
 class AnniversaryWidgetProvider : AppWidgetProvider() {
 
@@ -22,36 +23,60 @@ class AnniversaryWidgetProvider : AppWidgetProvider() {
         }
     }
 
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        if (intent.action == ACTION_UPDATE_WIDGET) {
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val appWidgetIds = appWidgetManager.getAppWidgetIds(
+                intent.component
+            )
+            for (appWidgetId in appWidgetIds) {
+                appWidgetManager.notifyAppWidgetViewDataChanged(
+                    appWidgetId, R.id.widgetListView
+                )
+            }
+        }
+    }
+
     private fun updateWidget(
         context: Context,
         appWidgetManager: AppWidgetManager,
         appWidgetId: Int
     ) {
-        val intent = Intent(context, WidgetRemoteViewsService::class.java).apply {
-            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
-            data = Uri.parse(toUri(Intent.URI_INTENT_SCHEME))
+        try {
+            val intent = Intent(context, WidgetRemoteViewsService::class.java).apply {
+                putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+                data = Uri.parse(toUri(Intent.URI_INTENT_SCHEME))
+            }
+
+            val views = RemoteViews(context.packageName, R.layout.widget_anniversary).apply {
+                setRemoteAdapter(R.id.widgetListView, intent)
+                setEmptyView(R.id.widgetListView, R.id.emptyView)
+            }
+
+            // Use setPendingIntentTemplate for ListView with remote adapter
+            // (setOnClickPendingIntent is NOT supported on collection views)
+            val templateIntent = Intent(context, DetailActivity::class.java)
+            val pendingIntent = PendingIntent.getActivity(
+                context, appWidgetId, templateIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            views.setPendingIntentTemplate(R.id.widgetListView, pendingIntent)
+
+            appWidgetManager.updateAppWidget(appWidgetId, views)
+            appWidgetManager.notifyAppWidgetViewDataChanged(
+                appWidgetId, R.id.widgetListView
+            )
+        } catch (e: Exception) {
+            Log.e("WidgetProvider", "Error updating widget $appWidgetId", e)
         }
-
-        val views = RemoteViews(context.packageName, R.layout.widget_anniversary).apply {
-            setRemoteAdapter(R.id.widgetListView, intent)
-        }
-
-        // Click to open app
-        val openAppIntent = Intent(context, MainActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(
-            context, 0, openAppIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        views.setOnClickPendingIntent(R.id.widgetListView, pendingIntent)
-
-        appWidgetManager.updateAppWidget(appWidgetId, views)
     }
 
-    override fun onEnabled(context: Context) {
-        // Enter relevant functionality for when the first widget is created
-    }
+    override fun onEnabled(context: Context) {}
 
-    override fun onDisabled(context: Context) {
-        // Enter relevant functionality for when the last widget is disabled
+    override fun onDisabled(context: Context) {}
+
+    companion object {
+        const val ACTION_UPDATE_WIDGET = "com.anniversary.app.ACTION_UPDATE_WIDGET"
     }
 }

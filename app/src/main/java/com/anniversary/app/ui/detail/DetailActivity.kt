@@ -2,10 +2,12 @@ package com.anniversary.app.ui.detail
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import com.anniversary.app.AnniversaryApplication
 import com.anniversary.app.R
 import com.anniversary.app.data.entity.Anniversary
@@ -16,6 +18,7 @@ import com.anniversary.app.ui.main.MainViewModel
 import com.anniversary.app.ui.main.MainViewModelFactory
 import com.anniversary.app.util.DateUtils
 import com.anniversary.app.util.LunarCalendar
+import kotlinx.coroutines.launch
 
 class DetailActivity : AppCompatActivity() {
 
@@ -25,6 +28,7 @@ class DetailActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_ANNIVERSARY = "extra_anniversary"
+        const val EXTRA_ANNIVERSARY_ID = "extra_anniversary_id"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,9 +46,36 @@ class DetailActivity : AppCompatActivity() {
 
         @Suppress("DEPRECATION")
         anniversary = intent.getSerializableExtra(EXTRA_ANNIVERSARY) as? Anniversary
-        anniversary?.let { displayAnniversary(it) }
+
+        if (anniversary != null) {
+            displayAnniversary(anniversary!!)
+        } else {
+            // Load by ID (e.g., from widget click)
+            val id = intent.getLongExtra(EXTRA_ANNIVERSARY_ID, -1L)
+            if (id != -1L) {
+                loadAnniversaryById(id)
+            }
+        }
 
         setupButtons()
+    }
+
+    private fun loadAnniversaryById(id: Long) {
+        val app = application as AnniversaryApplication
+        lifecycleScope.launch {
+            try {
+                val loaded = app.database.anniversaryDao().getAnniversaryById(id)
+                if (loaded != null) {
+                    anniversary = loaded
+                    displayAnniversary(loaded)
+                } else {
+                    finish()
+                }
+            } catch (e: Exception) {
+                Log.e("DetailActivity", "Error loading anniversary id=$id", e)
+                finish()
+            }
+        }
     }
 
     private fun displayAnniversary(anniversary: Anniversary) {
