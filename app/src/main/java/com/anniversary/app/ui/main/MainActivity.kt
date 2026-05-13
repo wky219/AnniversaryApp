@@ -1,6 +1,7 @@
 package com.anniversary.app.ui.main
 
 import android.Manifest
+import android.app.TimePickerDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -8,6 +9,7 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
@@ -15,17 +17,22 @@ import androidx.appcompat.widget.SearchView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.anniversary.app.AnniversaryApplication
 import com.anniversary.app.R
 import com.anniversary.app.data.entity.Anniversary
 import com.anniversary.app.data.entity.AnniversaryType
 import com.anniversary.app.databinding.ActivityMainBinding
+import com.anniversary.app.notification.ReminderScheduler
+import com.anniversary.app.notification.ReminderSettings
 import com.anniversary.app.ui.adapter.AnniversaryAdapter
 import com.anniversary.app.ui.add.AddEditActivity
 import com.anniversary.app.ui.detail.DetailActivity
 import com.anniversary.app.ui.widget.AnniversaryWidgetProvider
 import com.google.android.material.tabs.TabLayout
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
@@ -174,6 +181,10 @@ class MainActivity : AppCompatActivity() {
                 toggleDarkMode()
                 true
             }
+            R.id.action_reminder_time -> {
+                showReminderTimePicker()
+                true
+            }
             else -> super.onOptionsItemSelected(item)
         }
     }
@@ -201,6 +212,78 @@ class MainActivity : AppCompatActivity() {
             AppCompatDelegate.MODE_NIGHT_YES
         }
         AppCompatDelegate.setDefaultNightMode(newMode)
+    }
+
+    private fun showReminderTimePicker() {
+        val currentHour = ReminderSettings.getReminderHour(this)
+        val currentMinute = ReminderSettings.getReminderMinute(this)
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(R.string.reminder_time)
+            .setMessage(getString(R.string.reminder_time_summary) + ReminderSettings.getReminderTimeDisplay(this))
+            .setPositiveButton(R.string.confirm, null)
+            .setNegativeButton(R.string.cancel, null)
+            .create()
+
+        val timePicker = android.widget.TimePicker(this).apply {
+            setIs24HourView(true)
+            hour = currentHour
+            minute = currentMinute
+        }
+
+        dialog.setView(timePicker)
+        dialog.show()
+
+        // Override the positive button to get the selected time
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val hour = timePicker.hour
+            val minute = timePicker.minute
+            ReminderSettings.setReminderTime(this, hour, minute)
+            rescheduleAllReminders()
+            Toast.makeText(
+                this,
+                getString(R.string.reminder_time_summary) + ReminderSettings.getReminderTimeDisplay(this),
+                Toast.LENGTH_SHORT
+            ).show()
+            dialog.dismiss()
+        }
+    }
+
+    private fun rescheduleAllReminders() {
+        val app = application as AnniversaryApplication
+        lifecycleScope.launch(Dispatchers.IO) {
+            val anniversaries = app.database.anniversaryDao().getAnniversariesWithReminder()
+            for (anniversary in anniversaries) {
+                if (anniversary.reminderDays > 0) {
+                    // Cancel old reminder and reschedule with new time
+                    ReminderScheduler.cancelReminder(
+                        this@MainActivity,
+                        anniversary.name,
+                        anniversary.date
+                    )
+                    // Use next occurrence for yearly repeating events
+                    val reminderDate = if (anniversary.isRepeatYearly) {
+                        if (anniversary.isLunar) {
+                            com.anniversary.app.util.DateUtils.getNextLunarOccurrence(
+                                anniversary.lunarMonth,
+                                anniversary.lunarDay,
+                                anniversary.lunarIsLeapMonth
+                            )
+                        } else {
+                            com.anniversary.app.util.DateUtils.getNextOccurrence(anniversary.date)
+                        }
+                    } else {
+                        anniversary.date
+                    }
+                    ReminderScheduler.scheduleReminder(
+                        this@MainActivity,
+                        anniversary.name,
+                        reminderDate,
+                        anniversary.reminderDays
+                    )
+                }
+            }
+        }
     }
 
     private fun showDeleteConfirmDialog() {

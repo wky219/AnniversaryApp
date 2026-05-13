@@ -19,4 +19,9 @@
         android:title="@string/dark_mode"
         app:showAsAction="never" />
 
+    <item
+        android:id="@+id/action_reminder_time"
+        android:title="@string/reminder_time"
+        app:showAsAction="never" />
+
 </menu>

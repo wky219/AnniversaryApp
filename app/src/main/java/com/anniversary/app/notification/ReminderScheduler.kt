@@ -13,9 +13,6 @@ object ReminderScheduler {
 
     private const val TAG = "ReminderScheduler"
 
-    /** Reminder fires at 9:00 AM on the reminder day */
-    private const val REMINDER_HOUR_OF_DAY = 9
-
     fun scheduleReminder(
         context: Context,
         name: String,
@@ -24,8 +21,10 @@ object ReminderScheduler {
     ) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-        // Calculate reminder time: reminder day at 9:00 AM
-        val reminderTime = calculateReminderTime(dateTimestamp, reminderDaysBefore)
+        // Calculate reminder time using user's preferred time
+        val reminderHour = ReminderSettings.getReminderHour(context)
+        val reminderMinute = ReminderSettings.getReminderMinute(context)
+        val reminderTime = calculateReminderTime(dateTimestamp, reminderDaysBefore, reminderHour, reminderMinute)
 
         // If reminder time has already passed today, still schedule for today
         // (AlarmManager will fire it immediately or very soon)
@@ -35,7 +34,7 @@ object ReminderScheduler {
             val reminderDayStart = getStartOfDay(reminderTime)
             val todayStart = getStartOfDay(now)
             if (reminderDayStart == todayStart) {
-                // Reminder day is today but 9AM has passed -
+                // Reminder day is today but the set time has passed -
                 // schedule for 1 minute from now as a fallback
                 val fallbackTime = now + TimeUnit.MINUTES.toMillis(1)
                 scheduleAlarm(alarmManager, fallbackTime, context, name, dateTimestamp, reminderDaysBefore)
@@ -51,12 +50,17 @@ object ReminderScheduler {
         }
     }
 
-    private fun calculateReminderTime(dateTimestamp: Long, reminderDaysBefore: Int): Long {
+    private fun calculateReminderTime(
+        dateTimestamp: Long,
+        reminderDaysBefore: Int,
+        hourOfDay: Int,
+        minute: Int
+    ): Long {
         val calendar = Calendar.getInstance().apply {
             timeInMillis = dateTimestamp
             add(Calendar.DAY_OF_YEAR, -reminderDaysBefore)
-            set(Calendar.HOUR_OF_DAY, REMINDER_HOUR_OF_DAY)
-            set(Calendar.MINUTE, 0)
+            set(Calendar.HOUR_OF_DAY, hourOfDay)
+            set(Calendar.MINUTE, minute)
             set(Calendar.SECOND, 0)
             set(Calendar.MILLISECOND, 0)
         }
