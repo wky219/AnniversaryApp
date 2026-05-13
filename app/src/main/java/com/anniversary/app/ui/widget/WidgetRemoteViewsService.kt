@@ -35,7 +35,7 @@ class WidgetRemoteViewsFactory(
                 database.anniversaryDao().getAllAnniversaries().first()
             }.sortedBy { anniversary ->
                 DateUtils.getDaysUntilNext(anniversary)
-            }.take(5) // Show top 5 upcoming
+            }.take(10) // Show top 10 upcoming
         } catch (e: Exception) {
             Log.e("WidgetFactory", "Error loading data", e)
             anniversaries = emptyList()

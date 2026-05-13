@@ -16,6 +16,7 @@ import com.anniversary.app.databinding.ActivityDetailBinding
 import com.anniversary.app.ui.add.AddEditActivity
 import com.anniversary.app.ui.main.MainViewModel
 import com.anniversary.app.ui.main.MainViewModelFactory
+import com.anniversary.app.ui.widget.AnniversaryWidgetProvider
 import com.anniversary.app.util.DateUtils
 import com.anniversary.app.util.LunarCalendar
 import kotlinx.coroutines.launch
@@ -220,6 +221,7 @@ class DetailActivity : AppCompatActivity() {
             .setMessage(R.string.delete_confirm_message)
             .setPositiveButton(R.string.confirm) { _, _ ->
                 anniversary?.let { viewModel.delete(it) }
+                AnniversaryWidgetProvider.notifyDataChanged(this)
                 finish()
             }
             .setNegativeButton(R.string.cancel, null)

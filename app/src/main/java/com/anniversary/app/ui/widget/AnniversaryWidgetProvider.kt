@@ -2,6 +2,7 @@ package com.anniversary.app.ui.widget
 
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -26,15 +27,22 @@ class AnniversaryWidgetProvider : AppWidgetProvider() {
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
         if (intent.action == ACTION_UPDATE_WIDGET) {
-            val appWidgetManager = AppWidgetManager.getInstance(context)
-            val appWidgetIds = appWidgetManager.getAppWidgetIds(
-                intent.component
+            notifyDataChanged(context)
+        }
+    }
+
+    /**
+     * Notify all widget instances to refresh their data.
+     * Can be called from anywhere via the companion method.
+     */
+    private fun notifyDataChanged(context: Context) {
+        val appWidgetManager = AppWidgetManager.getInstance(context)
+        val componentName = ComponentName(context, AnniversaryWidgetProvider::class.java)
+        val appWidgetIds = appWidgetManager.getAppWidgetIds(componentName)
+        for (appWidgetId in appWidgetIds) {
+            appWidgetManager.notifyAppWidgetViewDataChanged(
+                appWidgetId, R.id.widgetListView
             )
-            for (appWidgetId in appWidgetIds) {
-                appWidgetManager.notifyAppWidgetViewDataChanged(
-                    appWidgetId, R.id.widgetListView
-                )
-            }
         }
     }
 
@@ -78,5 +86,15 @@ class AnniversaryWidgetProvider : AppWidgetProvider() {
 
     companion object {
         const val ACTION_UPDATE_WIDGET = "com.anniversary.app.ACTION_UPDATE_WIDGET"
+
+        /**
+         * Call this from any Activity to notify widgets that data has changed.
+         */
+        fun notifyDataChanged(context: Context) {
+            val intent = Intent(context, AnniversaryWidgetProvider::class.java).apply {
+                action = ACTION_UPDATE_WIDGET
+            }
+            context.sendBroadcast(intent)
+        }
     }
 }

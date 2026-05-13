@@ -14,6 +14,7 @@ import com.anniversary.app.data.entity.Anniversary
 import com.anniversary.app.data.entity.AnniversaryType
 import com.anniversary.app.databinding.ActivityAddEditBinding
 import com.anniversary.app.notification.ReminderScheduler
+import com.anniversary.app.ui.widget.AnniversaryWidgetProvider
 import com.anniversary.app.util.DateUtils
 import com.anniversary.app.util.LunarCalendar
 import java.util.*
@@ -254,6 +255,8 @@ class AddEditActivity : AppCompatActivity() {
                 Toast.makeText(this, R.string.save_success, Toast.LENGTH_SHORT).show()
                 // Schedule reminder if needed
                 scheduleReminder()
+                // Notify widget to refresh
+                AnniversaryWidgetProvider.notifyDataChanged(this)
                 finish()
             } else {
                 Toast.makeText(this, R.string.name_required, Toast.LENGTH_SHORT).show()

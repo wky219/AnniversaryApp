@@ -24,6 +24,7 @@ import com.anniversary.app.databinding.ActivityMainBinding
 import com.anniversary.app.ui.adapter.AnniversaryAdapter
 import com.anniversary.app.ui.add.AddEditActivity
 import com.anniversary.app.ui.detail.DetailActivity
+import com.anniversary.app.ui.widget.AnniversaryWidgetProvider
 import com.google.android.material.tabs.TabLayout
 
 class MainActivity : AppCompatActivity() {
@@ -209,6 +210,7 @@ class MainActivity : AppCompatActivity() {
             .setMessage(getString(R.string.delete_batch_confirm_message, count))
             .setPositiveButton(R.string.confirm) { _, _ ->
                 viewModel.deleteSelected()
+                AnniversaryWidgetProvider.notifyDataChanged(this)
             }
             .setNegativeButton(R.string.cancel, null)
             .show()
