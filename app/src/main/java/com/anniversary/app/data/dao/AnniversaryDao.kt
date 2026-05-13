@@ -11,6 +11,9 @@ interface AnniversaryDao {
     @Query("SELECT * FROM anniversaries ORDER BY date ASC")
     fun getAllAnniversaries(): Flow<List<Anniversary>>
 
+    @Query("SELECT * FROM anniversaries ORDER BY date ASC")
+    suspend fun getAllAnniversariesStatic(): List<Anniversary>
+
     @Query("SELECT * FROM anniversaries WHERE type = :type ORDER BY date ASC")
     fun getAnniversariesByType(type: AnniversaryType): Flow<List<Anniversary>>
 

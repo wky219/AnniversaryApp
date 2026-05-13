@@ -44,6 +44,7 @@
     <string name="share_text">%1$s\n日期: %2$s\n%3$s</string>
     <string name="widget_name">纪念日小组件</string>
     <string name="dark_mode">深色模式</string>
+    <string name="light_mode">浅色模式</string>
     <string name="lunar_calendar">农历</string>
     <string name="lunar_short">农历</string>
     <string name="select_lunar_date">选择农历日期</string>
@@ -51,4 +52,12 @@
     <string name="this_year_solar_date">今年阳历</string>
     <string name="reminder_time">提醒时间</string>
     <string name="reminder_time_summary">每日提醒推送时间： </string>
+    <string name="export_data">导出数据</string>
+    <string name="import_data">导入数据</string>
+    <string name="export_success">导出成功，共 %d 条记录</string>
+    <string name="export_empty">暂无数据可导出</string>
+    <string name="export_failed">导出失败</string>
+    <string name="import_success">导入成功，共 %d 条记录</string>
+    <string name="import_failed">导入失败，文件格式不正确</string>
+    <string name="import_confirm_message">导入将追加数据，不会覆盖已有记录，是否继续？</string>
 </resources>

@@ -4,6 +4,7 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
+import androidx.appcompat.app.AppCompatDelegate
 import com.anniversary.app.data.database.AnniversaryDatabase
 import com.anniversary.app.data.repository.AnniversaryRepository
 
@@ -14,7 +15,14 @@ class AnniversaryApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        restoreNightMode()
         createNotificationChannel()
+    }
+
+    private fun restoreNightMode() {
+        val savedMode = getSharedPreferences("app_settings", MODE_PRIVATE)
+            .getInt("night_mode", AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+        AppCompatDelegate.setDefaultNightMode(savedMode)
     }
 
     private fun createNotificationChannel() {

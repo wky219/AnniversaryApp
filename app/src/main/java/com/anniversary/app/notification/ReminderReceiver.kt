@@ -15,11 +15,18 @@ class ReminderReceiver : BroadcastReceiver() {
     companion object {
         const val EXTRA_NAME = "extra_name"
         const val EXTRA_DAYS_BEFORE = "extra_days_before"
+        const val EXTRA_DATE_TIMESTAMP = "extra_date_timestamp"
     }
 
     override fun onReceive(context: Context, intent: Intent) {
         val name = intent.getStringExtra(EXTRA_NAME) ?: return
         val daysBefore = intent.getIntExtra(EXTRA_DAYS_BEFORE, 0)
+        val dateTimestamp = intent.getLongExtra(EXTRA_DATE_TIMESTAMP, 0L)
+
+        // Prevent duplicate reminders (e.g., after phone reboot)
+        if (dateTimestamp != 0L && ReminderHistory.wasRemindedToday(context, name, dateTimestamp)) {
+            return
+        }
 
         val contentText = if (daysBefore > 0) {
             "「$name」还有${daysBefore}天就到了"
@@ -47,5 +54,10 @@ class ReminderReceiver : BroadcastReceiver() {
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(name.hashCode(), notification)
+
+        // Mark this reminder as sent today
+        if (dateTimestamp != 0L) {
+            ReminderHistory.markReminded(context, name, dateTimestamp)
+        }
     }
 }

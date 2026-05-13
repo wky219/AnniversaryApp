@@ -34,6 +34,11 @@ object ReminderScheduler {
             val reminderDayStart = getStartOfDay(reminderTime)
             val todayStart = getStartOfDay(now)
             if (reminderDayStart == todayStart) {
+                // Already reminded today? Skip to avoid duplicate
+                if (ReminderHistory.wasRemindedToday(context, name, dateTimestamp)) {
+                    Log.d(TAG, "Already reminded '$name' today, skipping fallback")
+                    return
+                }
                 // Reminder day is today but the set time has passed -
                 // schedule for 1 minute from now as a fallback
                 val fallbackTime = now + TimeUnit.MINUTES.toMillis(1)
@@ -78,6 +83,7 @@ object ReminderScheduler {
         val intent = Intent(context, ReminderReceiver::class.java).apply {
             putExtra(ReminderReceiver.EXTRA_NAME, name)
             putExtra(ReminderReceiver.EXTRA_DAYS_BEFORE, reminderDaysBefore)
+            putExtra(ReminderReceiver.EXTRA_DATE_TIMESTAMP, dateTimestamp)
         }
 
         val requestCode = (name.hashCode() + dateTimestamp.toInt())
