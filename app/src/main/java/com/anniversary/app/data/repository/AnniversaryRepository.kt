@@ -7,18 +7,19 @@ import kotlinx.coroutines.flow.Flow
 
 class AnniversaryRepository(private val dao: AnniversaryDao) {
 
-    fun getAllAnniversaries(): Flow<List<Anniversary>> = dao.getAllAnniversaries()
+    fun getAllAnniversaries(username: String): Flow<List<Anniversary>> =
+        dao.getAllAnniversaries(username)
 
-    fun getAnniversariesByType(type: AnniversaryType): Flow<List<Anniversary>> =
-        dao.getAnniversariesByType(type)
+    fun getAnniversariesByType(username: String, type: AnniversaryType): Flow<List<Anniversary>> =
+        dao.getAnniversariesByType(username, type)
 
-    fun searchAnniversaries(query: String): Flow<List<Anniversary>> =
-        dao.searchAnniversaries(query)
+    fun searchAnniversaries(username: String, query: String): Flow<List<Anniversary>> =
+        dao.searchAnniversaries(username, query)
 
     suspend fun getAnniversaryById(id: Long): Anniversary? = dao.getAnniversaryById(id)
 
-    suspend fun getAnniversariesWithReminder(): List<Anniversary> =
-        dao.getAnniversariesWithReminder()
+    suspend fun getAnniversariesWithReminder(username: String): List<Anniversary> =
+        dao.getAnniversariesWithReminder(username)
 
     suspend fun insert(anniversary: Anniversary): Long = dao.insert(anniversary)
 

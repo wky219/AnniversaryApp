@@ -54,8 +54,9 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(binding.toolbar)
 
         val app = application as AnniversaryApplication
+        val username = AuthManager.getLoggedInPhone(this)
         viewModel = ViewModelProvider(
-            this, MainViewModelFactory(app.repository)
+            this, MainViewModelFactory(app.repository, username)
         )[MainViewModel::class.java]
 
         setupRecyclerView()

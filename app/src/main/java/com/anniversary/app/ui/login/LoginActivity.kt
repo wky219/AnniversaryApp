@@ -9,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.anniversary.app.R
 import com.anniversary.app.data.cloud.CloudBaseManager
+import com.anniversary.app.data.database.AnniversaryDatabase
 import com.anniversary.app.databinding.ActivityLoginBinding
 import com.anniversary.app.ui.main.MainActivity
 import kotlinx.coroutines.Dispatchers
@@ -32,6 +33,7 @@ class LoginActivity : AppCompatActivity() {
         }
 
         setupViews()
+        fillLastUsername()
     }
 
     private fun setupViews() {
@@ -47,6 +49,15 @@ class LoginActivity : AppCompatActivity() {
             } else {
                 false
             }
+        }
+    }
+
+    private fun fillLastUsername() {
+        val lastUsername = AuthManager.getLastUsername(this)
+        if (lastUsername.isNotEmpty()) {
+            binding.etPhone.setText(lastUsername)
+            // Move focus to password field
+            binding.etPassword.requestFocus()
         }
     }
 
@@ -76,6 +87,10 @@ class LoginActivity : AppCompatActivity() {
                 binding.btnLogin.text = getString(R.string.login)
 
                 if (result != null) {
+                    // Migrate old data (username="") to current user
+                    lifecycleScope.launch(Dispatchers.IO) {
+                        migrateDataToUser(username)
+                    }
                     navigateToMain()
                 } else {
                     showError(getString(R.string.login_failed))
@@ -94,6 +109,20 @@ class LoginActivity : AppCompatActivity() {
         startActivity(intent)
         finish()
     }
+
+    /**
+     * Migrate local data that has no username (from before multi-user support)
+     * to the current logged-in user.
+     */
+    private suspend fun migrateDataToUser(username: String) {
+        val database = AnniversaryDatabase.getDatabase(this)
+        val dao = database.anniversaryDao()
+        // Get all records with empty username (legacy data)
+        val legacyData = dao.getAllAnniversariesStatic("")
+        for (ann in legacyData) {
+            dao.update(ann.copy(username = username))
+        }
+    }
 }
 
 /**
@@ -108,6 +137,7 @@ object AuthManager {
     private const val KEY_ACCESS_TOKEN = "access_token"
     private const val KEY_REFRESH_TOKEN = "refresh_token"
     private const val KEY_USER_ID = "user_id"
+    private const val KEY_LAST_USERNAME = "last_username"
 
     /**
      * Sign in with username and password via CloudBase.
@@ -146,6 +176,11 @@ object AuthManager {
             .getString(KEY_PHONE, "") ?: ""
     }
 
+    fun getLastUsername(context: Context): String {
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(KEY_LAST_USERNAME, "") ?: ""
+    }
+
     fun getAccessToken(context: Context): String? {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .getString(KEY_ACCESS_TOKEN, null)
@@ -171,5 +206,13 @@ object AuthManager {
             .putString(KEY_REFRESH_TOKEN, refreshToken)
             .putString(KEY_USER_ID, userId)
             .apply()
+
+        // Save last username separately (not cleared on logout)
+        if (!username.isNullOrEmpty()) {
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putString(KEY_LAST_USERNAME, username)
+                .apply()
+        }
     }
 }

@@ -32,7 +32,7 @@ object CloudBaseBackupRepository {
             }
 
             val database = AnniversaryDatabase.getDatabase(context)
-            val anniversaries = database.anniversaryDao().getAllAnniversariesStatic()
+            val anniversaries = database.anniversaryDao().getAllAnniversariesStatic(username)
             Log.d(TAG, "Local records to backup for user [$username]: ${anniversaries.size}")
 
             if (anniversaries.isEmpty()) {
@@ -94,16 +94,16 @@ object CloudBaseBackupRepository {
                 return -1
             }
 
-            // Clear local data and insert cloud data
-            val existing = database.anniversaryDao().getAllAnniversariesStatic()
+            // Clear local data for this user and insert cloud data
+            val existing = database.anniversaryDao().getAllAnniversariesStatic(username)
             for (ann in existing) {
                 database.anniversaryDao().delete(ann)
             }
 
-            // Insert cloud records
+            // Insert cloud records with username
             var count = 0
             for (ann in anniversaries) {
-                val id = database.anniversaryDao().insert(ann.copy(id = 0))
+                val id = database.anniversaryDao().insert(ann.copy(id = 0, username = username))
                 if (id > 0) {
                     count++
                     // Reschedule reminders
@@ -158,6 +158,7 @@ object CloudBaseBackupRepository {
 
             Anniversary(
                 id = 0, // Let Room auto-generate
+                username = map["username"] as? String ?: "",
                 name = map["name"] as? String ?: return null,
                 date = (map["date"] as? Number)?.toLong() ?: return null,
                 type = type,

@@ -9,6 +9,7 @@ import com.anniversary.app.R
 import com.anniversary.app.data.database.AnniversaryDatabase
 import com.anniversary.app.data.entity.Anniversary
 import com.anniversary.app.ui.detail.DetailActivity
+import com.anniversary.app.ui.login.AuthManager
 import com.anniversary.app.util.DateUtils
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -30,9 +31,10 @@ class WidgetRemoteViewsFactory(
 
     override fun onDataSetChanged() {
         try {
+            val username = AuthManager.getLoggedInPhone(context)
             val database = AnniversaryDatabase.getDatabase(context)
             anniversaries = runBlocking {
-                database.anniversaryDao().getAllAnniversaries().first()
+                database.anniversaryDao().getAllAnniversaries(username).first()
             }.sortedBy { anniversary ->
                 DateUtils.getDaysUntilNext(anniversary)
             }.take(10) // Show top 10 upcoming

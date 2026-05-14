@@ -14,6 +14,7 @@ import com.anniversary.app.data.entity.Anniversary
 import com.anniversary.app.data.entity.AnniversaryType
 import com.anniversary.app.databinding.ActivityDetailBinding
 import com.anniversary.app.ui.add.AddEditActivity
+import com.anniversary.app.ui.login.AuthManager
 import com.anniversary.app.ui.main.MainViewModel
 import com.anniversary.app.ui.main.MainViewModelFactory
 import com.anniversary.app.ui.widget.AnniversaryWidgetProvider
@@ -38,8 +39,9 @@ class DetailActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val app = application as AnniversaryApplication
+        val username = AuthManager.getLoggedInPhone(this)
         viewModel = ViewModelProvider(
-            this, MainViewModelFactory(app.repository)
+            this, MainViewModelFactory(app.repository, username)
         )[MainViewModel::class.java]
 
         setSupportActionBar(binding.toolbar)

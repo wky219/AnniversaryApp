@@ -8,6 +8,7 @@ import java.io.Serializable
 data class Anniversary(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
+    val username: String = "", // 用户标识，用于多用户数据隔离
     val name: String,
     val date: Long, // timestamp in millis (阳历时间戳)
     val type: AnniversaryType = AnniversaryType.CUSTOM,

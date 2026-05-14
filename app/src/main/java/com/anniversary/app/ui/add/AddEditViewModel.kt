@@ -6,7 +6,7 @@ import com.anniversary.app.data.entity.AnniversaryType
 import com.anniversary.app.data.repository.AnniversaryRepository
 import kotlinx.coroutines.launch
 
-class AddEditViewModel(private val repository: AnniversaryRepository) : ViewModel() {
+class AddEditViewModel(private val repository: AnniversaryRepository, private val username: String) : ViewModel() {
 
     private val _anniversary = MutableLiveData<Anniversary?>()
     val anniversary: LiveData<Anniversary?> = _anniversary
@@ -56,6 +56,7 @@ class AddEditViewModel(private val repository: AnniversaryRepository) : ViewMode
                 repository.update(updated)
             } else {
                 val newAnniversary = Anniversary(
+                    username = username,
                     name = name,
                     date = date,
                     type = type,
@@ -74,11 +75,11 @@ class AddEditViewModel(private val repository: AnniversaryRepository) : ViewMode
     }
 }
 
-class AddEditViewModelFactory(private val repository: AnniversaryRepository) : ViewModelProvider.Factory {
+class AddEditViewModelFactory(private val repository: AnniversaryRepository, private val username: String) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(AddEditViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return AddEditViewModel(repository) as T
+            return AddEditViewModel(repository, username) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

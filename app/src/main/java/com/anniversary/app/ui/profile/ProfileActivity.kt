@@ -120,8 +120,9 @@ class ProfileActivity : AppCompatActivity() {
     private fun rescheduleAllReminders() {
         val database = AnniversaryDatabase.getDatabase(this)
         val repository = AnniversaryRepository(database.anniversaryDao())
+        val username = AuthManager.getLoggedInPhone(this)
         lifecycleScope.launch(Dispatchers.IO) {
-            val anniversaries = repository.getAnniversariesWithReminder()
+            val anniversaries = repository.getAnniversariesWithReminder(username)
             anniversaries.forEach { anniversary ->
                 if (anniversary.reminderDays > 0) {
                     ReminderScheduler.scheduleReminder(
@@ -170,7 +171,8 @@ class ProfileActivity : AppCompatActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             // Check if there is data to backup
             val database = AnniversaryDatabase.getDatabase(this@ProfileActivity)
-            val count = database.anniversaryDao().getCount()
+            val username = AuthManager.getLoggedInPhone(this@ProfileActivity)
+            val count = database.anniversaryDao().getCount(username)
             if (count == 0) {
                 launch(Dispatchers.Main) {
                     isBackupRunning = false

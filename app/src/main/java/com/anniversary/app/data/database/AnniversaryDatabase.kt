@@ -10,7 +10,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.anniversary.app.data.dao.AnniversaryDao
 import com.anniversary.app.data.entity.Anniversary
 
-@Database(entities = [Anniversary::class], version = 2, exportSchema = false)
+@Database(entities = [Anniversary::class], version = 3, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AnniversaryDatabase : RoomDatabase() {
 
@@ -29,6 +29,12 @@ abstract class AnniversaryDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE anniversaries ADD COLUMN username TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         fun getDatabase(context: Context): AnniversaryDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -36,7 +42,7 @@ abstract class AnniversaryDatabase : RoomDatabase() {
                     AnniversaryDatabase::class.java,
                     "anniversary_database"
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .build()
                 INSTANCE = instance
                 instance
