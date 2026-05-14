@@ -2,34 +2,29 @@ package com.anniversary.app.ui.profile
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.lifecycle.lifecycleScope
 import com.anniversary.app.R
+import com.anniversary.app.data.cloud.CloudBaseBackupRepository
+import com.anniversary.app.data.database.AnniversaryDatabase
+import com.anniversary.app.data.repository.AnniversaryRepository
 import com.anniversary.app.databinding.ActivityProfileBinding
+import com.anniversary.app.notification.ReminderScheduler
 import com.anniversary.app.notification.ReminderSettings
 import com.anniversary.app.ui.login.AuthManager
 import com.anniversary.app.ui.login.LoginActivity
-import com.anniversary.app.ui.main.MainActivity
-import com.anniversary.app.util.DataBackupUtils
-import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import com.anniversary.app.data.database.AnniversaryDatabase
-import com.anniversary.app.data.repository.AnniversaryRepository
-import com.anniversary.app.notification.ReminderScheduler
-import com.anniversary.app.ui.widget.AnniversaryWidgetProvider
-import android.net.Uri
-import android.widget.Toast
 
 class ProfileActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityProfileBinding
-
-    companion object {
-        private const val REQUEST_EXPORT = 3001
-        private const val REQUEST_IMPORT = 3002
-    }
+    private var isBackupRunning = false
+    private var isRestoreRunning = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -141,119 +136,88 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     private fun setupDataBackup() {
-        binding.cardExport.setOnClickListener {
-            val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
-                addCategory(Intent.CATEGORY_OPENABLE)
-                type = "application/json"
-                putExtra(Intent.EXTRA_TITLE, "anniversary_backup_${System.currentTimeMillis()}.json")
+        binding.cardBackup.setOnClickListener {
+            if (isBackupRunning || isRestoreRunning) return@setOnClickListener
+            if (!AuthManager.isLoggedIn(this)) {
+                Toast.makeText(this, R.string.cloud_not_logged_in, Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
             }
-            startActivityForResult(intent, REQUEST_EXPORT)
+            performBackup()
         }
 
-        binding.cardImport.setOnClickListener {
+        binding.cardRestore.setOnClickListener {
+            if (isBackupRunning || isRestoreRunning) return@setOnClickListener
+            if (!AuthManager.isLoggedIn(this)) {
+                Toast.makeText(this, R.string.cloud_not_logged_in, Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
             AlertDialog.Builder(this)
                 .setTitle(R.string.confirm)
-                .setMessage(R.string.import_confirm_message)
+                .setMessage(R.string.restore_confirm_message)
                 .setPositiveButton(R.string.confirm) { _, _ ->
-                    val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                        addCategory(Intent.CATEGORY_OPENABLE)
-                        type = "application/json"
-                    }
-                    startActivityForResult(intent, REQUEST_IMPORT)
+                    performRestore()
                 }
                 .setNegativeButton(R.string.cancel, null)
                 .show()
         }
     }
 
-    @Deprecated("Use Activity Result API")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (resultCode != RESULT_OK || data == null) return
+    private fun performBackup() {
+        isBackupRunning = true
+        binding.progressBackup.visibility = View.VISIBLE
+        binding.cardBackup.isClickable = false
 
-        when (requestCode) {
-            REQUEST_EXPORT -> performExport(data.data!!)
-            REQUEST_IMPORT -> performImport(data.data!!)
-        }
-    }
-
-    private fun performExport(uri: Uri) {
-        val database = AnniversaryDatabase.getDatabase(this)
         lifecycleScope.launch(Dispatchers.IO) {
-            val anniversaries = database.anniversaryDao().getAllAnniversariesStatic()
-            if (anniversaries.isEmpty()) {
-                runOnUiThread {
-                    Toast.makeText(
-                        this@ProfileActivity,
-                        R.string.export_empty,
-                        Toast.LENGTH_SHORT
-                    ).show()
+            // Check if there is data to backup
+            val database = AnniversaryDatabase.getDatabase(this@ProfileActivity)
+            val count = database.anniversaryDao().getCount()
+            if (count == 0) {
+                launch(Dispatchers.Main) {
+                    isBackupRunning = false
+                    binding.progressBackup.visibility = View.GONE
+                    binding.cardBackup.isClickable = true
+                    Toast.makeText(this@ProfileActivity, R.string.backup_empty, Toast.LENGTH_SHORT).show()
                 }
                 return@launch
             }
-            val json = DataBackupUtils.toJson(anniversaries)
-            try {
-                contentResolver.openOutputStream(uri)?.use { os ->
-                    os.write(json.toByteArray(Charsets.UTF_8))
-                }
-                runOnUiThread {
+
+            val result = CloudBaseBackupRepository.backupToCloud(this@ProfileActivity)
+            launch(Dispatchers.Main) {
+                isBackupRunning = false
+                binding.progressBackup.visibility = View.GONE
+                binding.cardBackup.isClickable = true
+                if (result >= 0) {
                     Toast.makeText(
                         this@ProfileActivity,
-                        getString(R.string.export_success, anniversaries.size),
+                        getString(R.string.backup_success, result),
                         Toast.LENGTH_SHORT
                     ).show()
-                }
-            } catch (e: Exception) {
-                runOnUiThread {
-                    Toast.makeText(
-                        this@ProfileActivity,
-                        R.string.export_failed,
-                        Toast.LENGTH_SHORT
-                    ).show()
+                } else {
+                    Toast.makeText(this@ProfileActivity, R.string.backup_failed, Toast.LENGTH_SHORT).show()
                 }
             }
         }
     }
 
-    private fun performImport(uri: Uri) {
-        val database = AnniversaryDatabase.getDatabase(this)
-        lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                val json = contentResolver.openInputStream(uri)?.use { `is` ->
-                    `is`.bufferedReader().readText()
-                } ?: throw IllegalArgumentException("Cannot read file")
+    private fun performRestore() {
+        isRestoreRunning = true
+        binding.progressRestore.visibility = View.VISIBLE
+        binding.cardRestore.isClickable = false
 
-                val anniversaries = DataBackupUtils.fromJson(json) ?: throw IllegalArgumentException("Invalid format")
-                var importedCount = 0
-                anniversaries.forEach { anniversary ->
-                    val id = database.anniversaryDao().insert(anniversary.copy(id = 0))
-                    if (id > 0) {
-                        importedCount++
-                        if (anniversary.reminderDays > 0) {
-                            ReminderScheduler.scheduleReminder(
-                                this@ProfileActivity,
-                                anniversary.name,
-                                anniversary.date,
-                                anniversary.reminderDays
-                            )
-                        }
-                    }
-                }
-                AnniversaryWidgetProvider.notifyDataChanged(this@ProfileActivity)
-                runOnUiThread {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val result = CloudBaseBackupRepository.restoreFromCloud(this@ProfileActivity)
+            launch(Dispatchers.Main) {
+                isRestoreRunning = false
+                binding.progressRestore.visibility = View.GONE
+                binding.cardRestore.isClickable = true
+                if (result >= 0) {
                     Toast.makeText(
                         this@ProfileActivity,
-                        getString(R.string.import_success, importedCount),
+                        getString(R.string.restore_success, result),
                         Toast.LENGTH_SHORT
                     ).show()
-                }
-            } catch (e: Exception) {
-                runOnUiThread {
-                    Toast.makeText(
-                        this@ProfileActivity,
-                        R.string.import_failed,
-                        Toast.LENGTH_SHORT
-                    ).show()
+                } else {
+                    Toast.makeText(this@ProfileActivity, R.string.restore_failed, Toast.LENGTH_SHORT).show()
                 }
             }
         }

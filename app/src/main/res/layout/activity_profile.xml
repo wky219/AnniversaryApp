@@ -167,9 +167,9 @@
             android:textSize="13sp"
             android:textColor="?android:attr/textColorSecondary" />
 
-        <!-- Export -->
+        <!-- Backup to Cloud -->
         <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cardExport"
+            android:id="@+id/cardBackup"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
@@ -180,19 +180,34 @@
             app:strokeWidth="0.5dp"
             app:strokeColor="@color/divider_color">
 
-            <TextView
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="16dp"
-                android:text="@string/export_data"
-                android:textSize="15sp"
-                android:textColor="?android:attr/textColorPrimary" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/backup_to_cloud"
+                    android:textSize="15sp"
+                    android:textColor="?android:attr/textColorPrimary" />
+
+                <ProgressBar
+                    android:id="@+id/progressBackup"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:visibility="gone" />
+
+            </LinearLayout>
 
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Import -->
+        <!-- Restore from Cloud -->
         <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cardImport"
+            android:id="@+id/cardRestore"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
@@ -202,13 +217,28 @@
             app:strokeWidth="0.5dp"
             app:strokeColor="@color/divider_color">
 
-            <TextView
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="16dp"
-                android:text="@string/import_data"
-                android:textSize="15sp"
-                android:textColor="?android:attr/textColorPrimary" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/restore_from_cloud"
+                    android:textSize="15sp"
+                    android:textColor="?android:attr/textColorPrimary" />
+
+                <ProgressBar
+                    android:id="@+id/progressRestore"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:visibility="gone" />
+
+            </LinearLayout>
 
         </com.google.android.material.card.MaterialCardView>
 
