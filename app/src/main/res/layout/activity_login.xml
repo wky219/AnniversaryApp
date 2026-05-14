@@ -24,7 +24,7 @@
             android:textColor="?android:attr/textColorPrimary"
             android:layout_marginBottom="48dp" />
 
-        <!-- Phone Number -->
+        <!-- Username -->
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -35,8 +35,8 @@
                 android:id="@+id/etPhone"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="@string/hint_phone"
-                android:inputType="phone"
+                android:hint="@string/hint_username"
+                android:inputType="text"
                 android:maxLines="1"
                 android:textSize="16sp" />
 
@@ -55,7 +55,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:hint="@string/hint_password"
-                android:inputType="numberPassword"
+                android:inputType="textPassword"
                 android:maxLines="1"
                 android:textSize="16sp" />
 
