@@ -58,6 +58,7 @@
 
                 <!-- Login Label -->
                 <TextView
+                    android:id="@+id/tvLoginLabel"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
@@ -195,6 +196,14 @@
                     android:textSize="15sp"
                     android:textColor="?android:attr/textColorPrimary" />
 
+                <TextView
+                    android:id="@+id/tvBackupStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:visibility="gone" />
+
                 <ProgressBar
                     android:id="@+id/progressBackup"
                     android:layout_width="20dp"
@@ -231,6 +240,14 @@
                     android:text="@string/restore_from_cloud"
                     android:textSize="15sp"
                     android:textColor="?android:attr/textColorPrimary" />
+
+                <TextView
+                    android:id="@+id/tvRestoreStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:visibility="gone" />
 
                 <ProgressBar
                     android:id="@+id/progressRestore"

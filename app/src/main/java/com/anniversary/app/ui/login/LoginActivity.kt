@@ -26,8 +26,8 @@ class LoginActivity : AppCompatActivity() {
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // If already logged in, go straight to main
-        if (AuthManager.isLoggedIn(this)) {
+        // If already logged in or skipped login, go straight to main
+        if (AuthManager.canProceedToMain(this)) {
             navigateToMain()
             return
         }
@@ -41,6 +41,10 @@ class LoginActivity : AppCompatActivity() {
             attemptLogin()
         }
 
+        binding.btnSkipLogin.setOnClickListener {
+            showSkipLoginDialog()
+        }
+
         // Allow pressing "Done" on keyboard to login
         binding.etPassword.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_DONE) {
@@ -50,6 +54,18 @@ class LoginActivity : AppCompatActivity() {
                 false
             }
         }
+    }
+
+    private fun showSkipLoginDialog() {
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(R.string.skip_login_title)
+            .setMessage(R.string.skip_login_message)
+            .setPositiveButton(R.string.confirm) { _, _ ->
+                AuthManager.skipLogin(this)
+                navigateToMain()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
     }
 
     private fun fillLastUsername() {
@@ -138,6 +154,7 @@ object AuthManager {
     private const val KEY_REFRESH_TOKEN = "refresh_token"
     private const val KEY_USER_ID = "user_id"
     private const val KEY_LAST_USERNAME = "last_username"
+    private const val KEY_SKIP_LOGIN = "skip_login"
 
     /**
      * Sign in with username and password via CloudBase.
@@ -171,6 +188,35 @@ object AuthManager {
             .getBoolean(KEY_LOGGED_IN, false)
     }
 
+    fun isSkippedLogin(context: Context): Boolean {
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getBoolean(KEY_SKIP_LOGIN, false)
+    }
+
+    /**
+     * Check if user has either logged in or skipped login.
+     * Used to determine if the app should show the login screen.
+     */
+    fun canProceedToMain(context: Context): Boolean {
+        return isLoggedIn(context) || isSkippedLogin(context)
+    }
+
+    fun skipLogin(context: Context) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_SKIP_LOGIN, true)
+            .putBoolean(KEY_LOGGED_IN, false)
+            .putString(KEY_PHONE, "")
+            .apply()
+    }
+
+    fun clearSkipLogin(context: Context) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_SKIP_LOGIN, false)
+            .apply()
+    }
+
     fun getLoggedInPhone(context: Context): String {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .getString(KEY_PHONE, "") ?: ""
@@ -188,6 +234,11 @@ object AuthManager {
 
     fun logout(context: Context) {
         saveLoginState(context, false, "", null, null, null)
+        // Also clear skip login state so user sees login screen after logout
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_SKIP_LOGIN, false)
+            .apply()
     }
 
     private fun saveLoginState(
@@ -201,6 +252,7 @@ object AuthManager {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putBoolean(KEY_LOGGED_IN, loggedIn)
+            .putBoolean(KEY_SKIP_LOGIN, false) // Clear skip login when user actually logs in
             .putString(KEY_PHONE, username ?: "")
             .putString(KEY_ACCESS_TOKEN, accessToken)
             .putString(KEY_REFRESH_TOKEN, refreshToken)

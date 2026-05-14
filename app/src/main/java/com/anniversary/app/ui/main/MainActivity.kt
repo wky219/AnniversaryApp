@@ -41,8 +41,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Redirect to login if not authenticated
-        if (!AuthManager.isLoggedIn(this)) {
+        // Redirect to login if not authenticated and not skipped
+        if (!AuthManager.canProceedToMain(this)) {
             startActivity(Intent(this, com.anniversary.app.ui.login.LoginActivity::class.java))
             finish()
             return

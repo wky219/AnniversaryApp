@@ -71,6 +71,11 @@
     <string name="restore_confirm_message">恢复将覆盖本地所有数据，是否继续？</string>
     <string name="cloud_loading">处理中...</string>
     <string name="cloud_not_logged_in">请先登录后使用云端功能</string>
+    <string name="skip_login">暂不登录</string>
+    <string name="skip_login_title">提示</string>
+    <string name="skip_login_message">未登录状态下，数据仅保存在本地设备中，无法使用云端备份与恢复功能。更换设备或卸载应用将导致数据丢失，建议登录以保障数据安全。</string>
+    <string name="not_logged_in">未登录</string>
+    <string name="cloud_feature_requires_login">登录后可使用</string>
     <string name="login">登录</string>
     <string name="hint_username">账号</string>
     <string name="hint_password">密码</string>

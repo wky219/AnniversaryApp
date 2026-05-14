@@ -53,10 +53,17 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     private fun setupUserInfo() {
-        val phone = AuthManager.getLoggedInPhone(this)
-        binding.tvPhone.text = phone
-        // Show first character of phone as avatar text
-        binding.tvAvatar.text = phone.take(1)
+        val isLoggedIn = AuthManager.isLoggedIn(this)
+        if (isLoggedIn) {
+            val phone = AuthManager.getLoggedInPhone(this)
+            binding.tvPhone.text = phone
+            binding.tvAvatar.text = phone.take(1)
+            binding.tvLoginLabel.text = getString(R.string.profile_logged_in)
+        } else {
+            binding.tvPhone.text = getString(R.string.not_logged_in)
+            binding.tvAvatar.text = "?"
+            binding.tvLoginLabel.text = getString(R.string.skip_login)
+        }
     }
 
     private fun setupDarkMode() {
@@ -137,6 +144,20 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     private fun setupDataBackup() {
+        val isLoggedIn = AuthManager.isLoggedIn(this)
+
+        // Disable backup/restore for non-logged-in users
+        if (!isLoggedIn) {
+            binding.cardBackup.isEnabled = false
+            binding.cardBackup.alpha = 0.5f
+            binding.cardRestore.isEnabled = false
+            binding.cardRestore.alpha = 0.5f
+            binding.tvBackupStatus.text = getString(R.string.cloud_feature_requires_login)
+            binding.tvBackupStatus.visibility = View.VISIBLE
+            binding.tvRestoreStatus.text = getString(R.string.cloud_feature_requires_login)
+            binding.tvRestoreStatus.visibility = View.VISIBLE
+        }
+
         binding.cardBackup.setOnClickListener {
             if (isBackupRunning || isRestoreRunning) return@setOnClickListener
             if (!AuthManager.isLoggedIn(this)) {
@@ -226,19 +247,33 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     private fun setupLogout() {
-        binding.btnLogout.setOnClickListener {
-            AlertDialog.Builder(this)
-                .setTitle(R.string.logout_confirm_title)
-                .setMessage(R.string.logout_confirm_message)
-                .setPositiveButton(R.string.confirm) { _, _ ->
-                    AuthManager.logout(this)
-                    val intent = Intent(this, LoginActivity::class.java)
-                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                    startActivity(intent)
-                    finish()
-                }
-                .setNegativeButton(R.string.cancel, null)
-                .show()
+        val isLoggedIn = AuthManager.isLoggedIn(this)
+        if (isLoggedIn) {
+            binding.btnLogout.text = getString(R.string.logout)
+            binding.btnLogout.setOnClickListener {
+                AlertDialog.Builder(this)
+                    .setTitle(R.string.logout_confirm_title)
+                    .setMessage(R.string.logout_confirm_message)
+                    .setPositiveButton(R.string.confirm) { _, _ ->
+                        AuthManager.logout(this)
+                        val intent = Intent(this, LoginActivity::class.java)
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        startActivity(intent)
+                        finish()
+                    }
+                    .setNegativeButton(R.string.cancel, null)
+                    .show()
+            }
+        } else {
+            binding.btnLogout.text = getString(R.string.login)
+            binding.btnLogout.setOnClickListener {
+                // Clear skip login so LoginActivity doesn't auto-redirect
+                AuthManager.clearSkipLogin(this)
+                val intent = Intent(this, LoginActivity::class.java)
+                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                startActivity(intent)
+                finish()
+            }
         }
     }
 }
