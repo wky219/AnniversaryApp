@@ -14,7 +14,6 @@ import com.anniversary.app.data.entity.Anniversary
 import com.anniversary.app.data.entity.AnniversaryType
 import com.anniversary.app.databinding.ActivityAddEditBinding
 import com.anniversary.app.notification.ReminderScheduler
-import com.anniversary.app.ui.login.AuthManager
 import com.anniversary.app.ui.widget.AnniversaryWidgetProvider
 import com.anniversary.app.util.DateUtils
 import com.anniversary.app.util.LunarCalendar
@@ -42,9 +41,8 @@ class AddEditActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val app = application as AnniversaryApplication
-        val username = AuthManager.getLoggedInPhone(this)
         viewModel = ViewModelProvider(
-            this, AddEditViewModelFactory(app.repository, username)
+            this, AddEditViewModelFactory(app.repository)
         )[AddEditViewModel::class.java]
 
         setupToolbar()

@@ -1,30 +1,54 @@
 package com.anniversary.app.ui.profile
 
-import android.content.Intent
+import android.content.ActivityNotFoundException
+import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.lifecycle.lifecycleScope
 import com.anniversary.app.R
-import com.anniversary.app.data.cloud.CloudBaseBackupRepository
+import androidx.room.withTransaction
 import com.anniversary.app.data.database.AnniversaryDatabase
+import com.anniversary.app.data.entity.Anniversary
 import com.anniversary.app.data.repository.AnniversaryRepository
 import com.anniversary.app.databinding.ActivityProfileBinding
 import com.anniversary.app.notification.ReminderScheduler
 import com.anniversary.app.notification.ReminderSettings
-import com.anniversary.app.ui.login.AuthManager
-import com.anniversary.app.ui.login.LoginActivity
+import com.anniversary.app.ui.widget.AnniversaryWidgetProvider
+import com.anniversary.app.util.DataBackupUtils
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class ProfileActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityProfileBinding
-    private var isBackupRunning = false
-    private var isRestoreRunning = false
+    private var isExportRunning = false
+    private var isImportRunning = false
+    private val isTransferRunning: Boolean
+        get() = isExportRunning || isImportRunning
+
+    private val exportLauncher = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null) performExport(uri)
+    }
+
+    private val importLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) performImport(uri)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,11 +56,9 @@ class ProfileActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         setupToolbar()
-        setupUserInfo()
         setupDarkMode()
         setupReminderTime()
         setupDataBackup()
-        setupLogout()
     }
 
     override fun onResume() {
@@ -50,20 +72,6 @@ class ProfileActivity : AppCompatActivity() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         binding.toolbar.setNavigationOnClickListener { finish() }
-    }
-
-    private fun setupUserInfo() {
-        val isLoggedIn = AuthManager.isLoggedIn(this)
-        if (isLoggedIn) {
-            val phone = AuthManager.getLoggedInPhone(this)
-            binding.tvPhone.text = phone
-            binding.tvAvatar.text = phone.take(1)
-            binding.tvLoginLabel.text = getString(R.string.profile_logged_in)
-        } else {
-            binding.tvPhone.text = getString(R.string.not_logged_in)
-            binding.tvAvatar.text = "?"
-            binding.tvLoginLabel.text = getString(R.string.skip_login)
-        }
     }
 
     private fun setupDarkMode() {
@@ -127,9 +135,8 @@ class ProfileActivity : AppCompatActivity() {
     private fun rescheduleAllReminders() {
         val database = AnniversaryDatabase.getDatabase(this)
         val repository = AnniversaryRepository(database.anniversaryDao())
-        val username = AuthManager.getLoggedInPhone(this)
         lifecycleScope.launch(Dispatchers.IO) {
-            val anniversaries = repository.getAnniversariesWithReminder(username)
+            val anniversaries = repository.getAnniversariesWithReminder()
             anniversaries.forEach { anniversary ->
                 if (anniversary.reminderDays > 0) {
                     ReminderScheduler.scheduleReminder(
@@ -144,136 +151,151 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     private fun setupDataBackup() {
-        val isLoggedIn = AuthManager.isLoggedIn(this)
-
-        // Disable backup/restore for non-logged-in users
-        if (!isLoggedIn) {
-            binding.cardBackup.isEnabled = false
-            binding.cardBackup.alpha = 0.5f
-            binding.cardRestore.isEnabled = false
-            binding.cardRestore.alpha = 0.5f
-            binding.tvBackupStatus.text = getString(R.string.cloud_feature_requires_login)
-            binding.tvBackupStatus.visibility = View.VISIBLE
-            binding.tvRestoreStatus.text = getString(R.string.cloud_feature_requires_login)
-            binding.tvRestoreStatus.visibility = View.VISIBLE
+        binding.cardExport.setOnClickListener {
+            if (!isTransferRunning) requestExport()
         }
-
-        binding.cardBackup.setOnClickListener {
-            if (isBackupRunning || isRestoreRunning) return@setOnClickListener
-            if (!AuthManager.isLoggedIn(this)) {
-                Toast.makeText(this, R.string.cloud_not_logged_in, Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            performBackup()
-        }
-
-        binding.cardRestore.setOnClickListener {
-            if (isBackupRunning || isRestoreRunning) return@setOnClickListener
-            if (!AuthManager.isLoggedIn(this)) {
-                Toast.makeText(this, R.string.cloud_not_logged_in, Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
+        binding.cardImport.setOnClickListener {
+            if (isTransferRunning) return@setOnClickListener
             AlertDialog.Builder(this)
-                .setTitle(R.string.confirm)
-                .setMessage(R.string.restore_confirm_message)
+                .setTitle(R.string.import_data)
+                .setMessage(R.string.import_confirm_message)
                 .setPositiveButton(R.string.confirm) { _, _ ->
-                    performRestore()
+                    try {
+                        importLauncher.launch(arrayOf("*/*"))
+                    } catch (e: ActivityNotFoundException) {
+                        Toast.makeText(this, R.string.file_picker_unavailable, Toast.LENGTH_SHORT).show()
+                    }
                 }
                 .setNegativeButton(R.string.cancel, null)
                 .show()
         }
     }
 
-    private fun performBackup() {
-        isBackupRunning = true
-        binding.progressBackup.visibility = View.VISIBLE
-        binding.cardBackup.isClickable = false
+    private fun updateTransferState() {
+        binding.cardExport.isEnabled = !isTransferRunning
+        binding.cardImport.isEnabled = !isTransferRunning
+        binding.cardDarkMode.isEnabled = !isTransferRunning
+        binding.progressExport.visibility = if (isExportRunning) View.VISIBLE else View.GONE
+        binding.progressImport.visibility = if (isImportRunning) View.VISIBLE else View.GONE
+    }
 
-        lifecycleScope.launch(Dispatchers.IO) {
-            // Check if there is data to backup
-            val database = AnniversaryDatabase.getDatabase(this@ProfileActivity)
-            val username = AuthManager.getLoggedInPhone(this@ProfileActivity)
-            val count = database.anniversaryDao().getCount(username)
-            if (count == 0) {
-                launch(Dispatchers.Main) {
-                    isBackupRunning = false
-                    binding.progressBackup.visibility = View.GONE
-                    binding.cardBackup.isClickable = true
-                    Toast.makeText(this@ProfileActivity, R.string.backup_empty, Toast.LENGTH_SHORT).show()
+    private fun requestExport() {
+        isExportRunning = true
+        updateTransferState()
+        lifecycleScope.launch {
+            try {
+                val count = withContext(Dispatchers.IO) {
+                    AnniversaryDatabase.getDatabase(this@ProfileActivity)
+                        .anniversaryDao().getCount()
                 }
-                return@launch
-            }
-
-            val result = CloudBaseBackupRepository.backupToCloud(this@ProfileActivity)
-            launch(Dispatchers.Main) {
-                isBackupRunning = false
-                binding.progressBackup.visibility = View.GONE
-                binding.cardBackup.isClickable = true
-                if (result >= 0) {
-                    Toast.makeText(
-                        this@ProfileActivity,
-                        getString(R.string.backup_success, result),
-                        Toast.LENGTH_SHORT
-                    ).show()
+                if (count == 0) {
+                    Toast.makeText(this@ProfileActivity, R.string.export_empty, Toast.LENGTH_SHORT).show()
                 } else {
-                    Toast.makeText(this@ProfileActivity, R.string.backup_failed, Toast.LENGTH_SHORT).show()
+                    val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.ROOT).format(Date())
+                    exportLauncher.launch("anniversary_$timestamp.json")
                 }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w("ProfileActivity", "无法开始导出", e)
+                Toast.makeText(this@ProfileActivity, R.string.export_failed, Toast.LENGTH_SHORT).show()
+            } finally {
+                isExportRunning = false
+                updateTransferState()
             }
         }
     }
 
-    private fun performRestore() {
-        isRestoreRunning = true
-        binding.progressRestore.visibility = View.VISIBLE
-        binding.cardRestore.isClickable = false
-
-        lifecycleScope.launch(Dispatchers.IO) {
-            val result = CloudBaseBackupRepository.restoreFromCloud(this@ProfileActivity)
-            launch(Dispatchers.Main) {
-                isRestoreRunning = false
-                binding.progressRestore.visibility = View.GONE
-                binding.cardRestore.isClickable = true
-                if (result >= 0) {
-                    Toast.makeText(
-                        this@ProfileActivity,
-                        getString(R.string.restore_success, result),
-                        Toast.LENGTH_SHORT
-                    ).show()
-                } else {
-                    Toast.makeText(this@ProfileActivity, R.string.restore_failed, Toast.LENGTH_SHORT).show()
+    private fun performExport(uri: Uri) {
+        if (isTransferRunning) return
+        isExportRunning = true
+        updateTransferState()
+        lifecycleScope.launch {
+            try {
+                val count = withContext(Dispatchers.IO) {
+                    val anniversaries = AnniversaryDatabase.getDatabase(this@ProfileActivity)
+                        .anniversaryDao().getAllAnniversariesStatic()
+                    val json = DataBackupUtils.toJson(anniversaries)
+                    val stream = contentResolver.openOutputStream(uri, "wt")
+                        ?: throw IOException("无法打开导出文件")
+                    stream.bufferedWriter(Charsets.UTF_8).use { it.write(json) }
+                    anniversaries.size
                 }
+                Toast.makeText(
+                    this@ProfileActivity, getString(R.string.export_success, count), Toast.LENGTH_SHORT
+                ).show()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w("ProfileActivity", "导出文件失败", e)
+                Toast.makeText(this@ProfileActivity, R.string.export_failed, Toast.LENGTH_SHORT).show()
+            } finally {
+                isExportRunning = false
+                updateTransferState()
             }
         }
     }
 
-    private fun setupLogout() {
-        val isLoggedIn = AuthManager.isLoggedIn(this)
-        if (isLoggedIn) {
-            binding.btnLogout.text = getString(R.string.logout)
-            binding.btnLogout.setOnClickListener {
-                AlertDialog.Builder(this)
-                    .setTitle(R.string.logout_confirm_title)
-                    .setMessage(R.string.logout_confirm_message)
-                    .setPositiveButton(R.string.confirm) { _, _ ->
-                        AuthManager.logout(this)
-                        val intent = Intent(this, LoginActivity::class.java)
-                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                        startActivity(intent)
-                        finish()
+    private fun performImport(uri: Uri) {
+        if (isTransferRunning) return
+        isImportRunning = true
+        updateTransferState()
+        lifecycleScope.launch {
+            try {
+                val (count, refreshSucceeded) = withContext(Dispatchers.IO) {
+                    val stream = contentResolver.openInputStream(uri)
+                        ?: throw IOException("无法打开导入文件")
+                    val json = stream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+                    val anniversaries = DataBackupUtils.fromJson(json)
+                        ?: throw IllegalArgumentException("备份文件格式无效")
+                    val database = AnniversaryDatabase.getDatabase(this@ProfileActivity)
+                    // 整个文件校验通过后再追加，失败时回滚，不覆盖现有记录。
+                    database.withTransaction {
+                        anniversaries.forEach { anniversary ->
+                            database.anniversaryDao().insert(anniversary.copy(id = 0, username = ""))
+                        }
                     }
-                    .setNegativeButton(R.string.cancel, null)
-                    .show()
-            }
-        } else {
-            binding.btnLogout.text = getString(R.string.login)
-            binding.btnLogout.setOnClickListener {
-                // Clear skip login so LoginActivity doesn't auto-redirect
-                AuthManager.clearSkipLogin(this)
-                val intent = Intent(this, LoginActivity::class.java)
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                startActivity(intent)
-                finish()
+                    anniversaries.size to refreshImportedData(anniversaries)
+                }
+                val message = when {
+                    count == 0 -> getString(R.string.import_empty)
+                    !refreshSucceeded -> getString(R.string.import_refresh_failed, count)
+                    else -> getString(R.string.import_success, count)
+                }
+                Toast.makeText(this@ProfileActivity, message, Toast.LENGTH_LONG).show()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: IllegalArgumentException) {
+                Toast.makeText(this@ProfileActivity, R.string.import_failed, Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Log.w("ProfileActivity", "导入文件失败", e)
+                Toast.makeText(this@ProfileActivity, R.string.import_io_failed, Toast.LENGTH_SHORT).show()
+            } finally {
+                isImportRunning = false
+                updateTransferState()
             }
         }
+    }
+
+    private fun refreshImportedData(anniversaries: List<Anniversary>): Boolean {
+        var succeeded = true
+        // 数据已提交，刷新失败需单独提示，避免用户误以为导入失败而重复追加。
+        anniversaries.filter { it.reminderDays >= 0 }.forEach { anniversary ->
+            try {
+                ReminderScheduler.scheduleReminder(
+                    applicationContext, anniversary.name, anniversary.date, anniversary.reminderDays
+                )
+            } catch (e: Exception) {
+                succeeded = false
+                Log.w("ProfileActivity", "导入后调度提醒失败", e)
+            }
+        }
+        try {
+            AnniversaryWidgetProvider.notifyDataChanged(applicationContext)
+        } catch (e: Exception) {
+            succeeded = false
+            Log.w("ProfileActivity", "导入后刷新小部件失败", e)
+        }
+        return succeeded
     }
 }

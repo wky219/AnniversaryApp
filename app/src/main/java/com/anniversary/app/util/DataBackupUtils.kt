@@ -68,13 +68,16 @@ object DataBackupUtils {
         return try {
             val root = JSONObject(json)
             val version = root.optInt(KEY_VERSION, -1)
-            if (version == -1) return null
+            if (version != CURRENT_VERSION) return null
 
             val array = root.optJSONArray(KEY_ANNIVERSARIES) ?: return null
             val result = mutableListOf<Anniversary>()
 
             for (i in 0 until array.length()) {
                 val obj = array.getJSONObject(i)
+                val name = obj.getString(F_NAME)
+                if (obj.isNull(F_NAME) || name.isBlank()) return null
+                val date = obj.getLong(F_DATE)
                 val type = try {
                     AnniversaryType.valueOf(obj.optString(F_TYPE, "CUSTOM"))
                 } catch (e: Exception) {
@@ -82,8 +85,8 @@ object DataBackupUtils {
                 }
 
                 val anniversary = Anniversary(
-                    name = obj.optString(F_NAME, ""),
-                    date = obj.optLong(F_DATE, 0L),
+                    name = name,
+                    date = date,
                     type = type,
                     note = obj.optString(F_NOTE, ""),
                     isRepeatYearly = obj.optBoolean(F_REPEAT_YEARLY, false),
@@ -95,9 +98,11 @@ object DataBackupUtils {
                     createdAt = obj.optLong(F_CREATED_AT, System.currentTimeMillis()),
                     updatedAt = obj.optLong(F_UPDATED_AT, System.currentTimeMillis())
                 )
-                if (anniversary.name.isNotBlank()) {
-                    result.add(anniversary)
-                }
+                if (anniversary.reminderDays < -1) return null
+                if (anniversary.isLunar &&
+                    (anniversary.lunarMonth !in 1..12 || anniversary.lunarDay !in 1..30)
+                ) return null
+                result.add(anniversary)
             }
             result
         } catch (e: Exception) {

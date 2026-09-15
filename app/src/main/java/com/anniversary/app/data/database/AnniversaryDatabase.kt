@@ -10,7 +10,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.anniversary.app.data.dao.AnniversaryDao
 import com.anniversary.app.data.entity.Anniversary
 
-@Database(entities = [Anniversary::class], version = 3, exportSchema = false)
+@Database(entities = [Anniversary::class], version = 4, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AnniversaryDatabase : RoomDatabase() {
 
@@ -35,6 +35,13 @@ abstract class AnniversaryDatabase : RoomDatabase() {
             }
         }
 
+        // 去掉登录功能后不再区分用户，将历史登录用户的数据全部归并为本机数据
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("UPDATE anniversaries SET username = ''")
+            }
+        }
+
         fun getDatabase(context: Context): AnniversaryDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -42,7 +49,7 @@ abstract class AnniversaryDatabase : RoomDatabase() {
                     AnniversaryDatabase::class.java,
                     "anniversary_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build()
                 INSTANCE = instance
                 instance

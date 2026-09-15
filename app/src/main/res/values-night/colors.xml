@@ -1,16 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="primary_night">#FFD0BCFF</color>
-    <color name="primary_dark_night">#FF9A82DB</color>
-    <color name="secondary_night">#FFCCC2DC</color>
-    <color name="secondary_dark_night">#FF9A8DAE</color>
-    <color name="background_night">#FF1C1B1F</color>
-    <color name="surface_night">#FF1C1B1F</color>
-    <color name="on_primary_night">#FF381E72</color>
-    <color name="on_secondary_night">#FF332D41</color>
-    <color name="on_background_night">#FFE6E1E5</color>
-    <color name="on_surface_night">#FFE6E1E5</color>
-    <color name="avatar_background">#FF4F378B</color>
-    <color name="avatar_text_color">#FFE8DEF8</color>
+    <color name="primary">#FFD0BCFF</color>
+    <color name="primary_dark">#FF9A82DB</color>
+    <color name="secondary">#FFCCC2DC</color>
+    <color name="secondary_dark">#FF9A8DAE</color>
+    <color name="background">#FF1C1B1F</color>
+    <color name="surface">#FF1C1B1F</color>
+    <color name="on_primary">#FF381E72</color>
+    <color name="on_secondary">#FF332D41</color>
+    <color name="on_background">#FFE6E1E5</color>
+    <color name="on_surface">#FFE6E1E5</color>
     <color name="divider_color">#1FFFFFFF</color>
 </resources>

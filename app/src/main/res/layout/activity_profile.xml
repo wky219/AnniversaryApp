@@ -20,61 +20,12 @@
             app:titleTextColor="@android:color/white"
             app:title="@string/profile_title" />
 
-        <!-- User Info Card -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_margin="16dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="2dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="24dp"
-                android:gravity="center_horizontal">
-
-                <!-- Avatar -->
-                <TextView
-                    android:id="@+id/tvAvatar"
-                    android:layout_width="80dp"
-                    android:layout_height="80dp"
-                    android:layout_marginBottom="16dp"
-                    android:background="@color/avatar_background"
-                    android:gravity="center"
-                    android:textColor="@color/avatar_text_color"
-                    android:textSize="32sp"
-                    android:textStyle="bold" />
-
-                <!-- Phone Number -->
-                <TextView
-                    android:id="@+id/tvPhone"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:textColor="?android:attr/textColorPrimary" />
-
-                <!-- Login Label -->
-                <TextView
-                    android:id="@+id/tvLoginLabel"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="@string/profile_logged_in"
-                    android:textSize="13sp"
-                    android:textColor="?android:attr/textColorSecondary" />
-
-            </LinearLayout>
-
-        </com.google.android.material.card.MaterialCardView>
-
         <!-- Settings Section -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
+            android:layout_marginTop="16dp"
             android:layout_marginBottom="8dp"
             android:text="@string/profile_settings"
             android:textSize="13sp"
@@ -168,9 +119,9 @@
             android:textSize="13sp"
             android:textColor="?android:attr/textColorSecondary" />
 
-        <!-- Backup to Cloud -->
+        <!-- 导出数据 -->
         <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cardBackup"
+            android:id="@+id/cardExport"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
@@ -192,20 +143,12 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/backup_to_cloud"
+                    android:text="@string/export_data"
                     android:textSize="15sp"
                     android:textColor="?android:attr/textColorPrimary" />
 
-                <TextView
-                    android:id="@+id/tvBackupStatus"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textSize="12sp"
-                    android:textColor="?android:attr/textColorSecondary"
-                    android:visibility="gone" />
-
                 <ProgressBar
-                    android:id="@+id/progressBackup"
+                    android:id="@+id/progressExport"
                     android:layout_width="20dp"
                     android:layout_height="20dp"
                     android:visibility="gone" />
@@ -214,13 +157,14 @@
 
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Restore from Cloud -->
+        <!-- 导入数据 -->
         <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cardRestore"
+            android:id="@+id/cardImport"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:layout_marginEnd="16dp"
+            android:layout_marginBottom="32dp"
             app:cardCornerRadius="0dp"
             app:cardElevation="0dp"
             app:strokeWidth="0.5dp"
@@ -237,20 +181,12 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/restore_from_cloud"
+                    android:text="@string/import_data"
                     android:textSize="15sp"
                     android:textColor="?android:attr/textColorPrimary" />
 
-                <TextView
-                    android:id="@+id/tvRestoreStatus"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textSize="12sp"
-                    android:textColor="?android:attr/textColorSecondary"
-                    android:visibility="gone" />
-
                 <ProgressBar
-                    android:id="@+id/progressRestore"
+                    android:id="@+id/progressImport"
                     android:layout_width="20dp"
                     android:layout_height="20dp"
                     android:visibility="gone" />
@@ -258,19 +194,6 @@
             </LinearLayout>
 
         </com.google.android.material.card.MaterialCardView>
-
-        <!-- Logout Button -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnLogout"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginStart="16dp"
-            android:layout_marginEnd="16dp"
-            android:layout_marginTop="32dp"
-            android:layout_marginBottom="32dp"
-            android:text="@string/logout"
-            android:textColor="?android:attr/colorError" />
 
     </LinearLayout>
 

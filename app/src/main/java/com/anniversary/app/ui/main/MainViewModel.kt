@@ -8,7 +8,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
-class MainViewModel(private val repository: AnniversaryRepository, private val username: String) : ViewModel() {
+class MainViewModel(private val repository: AnniversaryRepository) : ViewModel() {
 
     private val _filterType = MutableLiveData<AnniversaryType?>(null)
     private val _searchQuery = MutableLiveData<String>("")
@@ -28,9 +28,9 @@ class MainViewModel(private val repository: AnniversaryRepository, private val u
             collectJob?.cancel()
             collectJob = viewModelScope.launch {
                 val flow = when {
-                    query.isNotBlank() -> repository.searchAnniversaries(username, query)
-                    type != null -> repository.getAnniversariesByType(username, type)
-                    else -> repository.getAllAnniversaries(username)
+                    query.isNotBlank() -> repository.searchAnniversaries(query)
+                    type != null -> repository.getAnniversariesByType(type)
+                    else -> repository.getAllAnniversaries()
                 }
                 flow.collect { list ->
                     postValue(list)
@@ -91,11 +91,11 @@ class MainViewModel(private val repository: AnniversaryRepository, private val u
     }
 }
 
-class MainViewModelFactory(private val repository: AnniversaryRepository, private val username: String) : ViewModelProvider.Factory {
+class MainViewModelFactory(private val repository: AnniversaryRepository) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return MainViewModel(repository, username) as T
+            return MainViewModel(repository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

@@ -8,7 +8,7 @@ import java.io.Serializable
 data class Anniversary(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
-    val username: String = "", // 用户标识，用于多用户数据隔离
+    val username: String = "", // 历史字段：登录功能已移除，保留列以兼容旧数据库，始终为空
     val name: String,
     val date: Long, // timestamp in millis (阳历时间戳)
     val type: AnniversaryType = AnniversaryType.CUSTOM,

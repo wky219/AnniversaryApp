@@ -108,8 +108,14 @@ object ReminderScheduler {
                     pendingIntent
                 )
             }
-        } else {
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                triggerTime,
+                pendingIntent
+            )
+        } else {
+            alarmManager.setExact(
                 AlarmManager.RTC_WAKEUP,
                 triggerTime,
                 pendingIntent

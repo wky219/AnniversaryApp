@@ -5,10 +5,8 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
 import androidx.appcompat.app.AppCompatDelegate
-import com.anniversary.app.data.cloud.CloudBaseManager
 import com.anniversary.app.data.database.AnniversaryDatabase
 import com.anniversary.app.data.repository.AnniversaryRepository
-import com.anniversary.app.ui.login.AuthManager
 
 class AnniversaryApplication : Application() {
 
@@ -18,7 +16,6 @@ class AnniversaryApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         restoreNightMode()
-        restoreCloudBaseToken()
         createNotificationChannel()
     }
 
@@ -26,13 +23,6 @@ class AnniversaryApplication : Application() {
         val savedMode = getSharedPreferences("app_settings", MODE_PRIVATE)
             .getInt("night_mode", AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
         AppCompatDelegate.setDefaultNightMode(savedMode)
-    }
-
-    private fun restoreCloudBaseToken() {
-        val token = AuthManager.getAccessToken(this)
-        if (token != null) {
-            CloudBaseManager.updateAccessToken(token)
-        }
     }
 
     private fun createNotificationChannel() {

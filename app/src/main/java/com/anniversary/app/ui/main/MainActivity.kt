@@ -24,7 +24,6 @@ import com.anniversary.app.databinding.ActivityMainBinding
 import com.anniversary.app.ui.adapter.AnniversaryAdapter
 import com.anniversary.app.ui.add.AddEditActivity
 import com.anniversary.app.ui.detail.DetailActivity
-import com.anniversary.app.ui.login.AuthManager
 import com.anniversary.app.ui.widget.AnniversaryWidgetProvider
 import com.google.android.material.tabs.TabLayout
 
@@ -41,22 +40,14 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Redirect to login if not authenticated and not skipped
-        if (!AuthManager.canProceedToMain(this)) {
-            startActivity(Intent(this, com.anniversary.app.ui.login.LoginActivity::class.java))
-            finish()
-            return
-        }
-
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         setSupportActionBar(binding.toolbar)
 
         val app = application as AnniversaryApplication
-        val username = AuthManager.getLoggedInPhone(this)
         viewModel = ViewModelProvider(
-            this, MainViewModelFactory(app.repository, username)
+            this, MainViewModelFactory(app.repository)
         )[MainViewModel::class.java]
 
         setupRecyclerView()
